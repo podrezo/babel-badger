@@ -1,3 +1,4 @@
 telegram_secret_webhook_token: "token that telegram sends you in webhook header"
 telegram_bot_key: "the key used to talk to the telegram API"
 openai_api_key: "Used for OpenAI ChatGPT API"
+listen_string: "@AutomaticTranslationBot" # The string to listen for in the conversation

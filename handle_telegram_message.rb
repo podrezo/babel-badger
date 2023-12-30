@@ -21,7 +21,7 @@ def handle(event:, context:)
   $chat_id = body['message']['chat']['id']
   $chat_type = body['message']['chat']['type']
   $user_message_id = body['message']['message_id']
-  $user_message_text = body['message']['text']
+  $user_message_text = body['message']['text'] || body['message']['caption']
 
   case $chat_type
   when 'private'
@@ -40,7 +40,7 @@ def handle_private_message(event)
   # If starting the conversation with the bot, respond with a helpful message
   return {
     chat_id: $chat_id,
-    message_to_send: 'Hey there! Add me to a group chat and I\'ll translate messages for you. Simply reply with "/t" to any message and I\'ll translate it into English. Alternatively, forward me any message and I\'ll translate it into English.',
+    message_to_send: 'Hey there! I will translate messages into English. You can either forward me messages to me from other conversations, type stuff directly to me, or add me to a group conversation and tag me in a reply to a message.',
     reply_to_message_id: $user_message_id,
   } if $user_message_text == '/start'
 
@@ -53,11 +53,11 @@ def handle_private_message(event)
 end
 
 def handle_group_chat_message(event)
-  return unless $user_message_text == '/t'
+  return unless $user_message_text.include?($config['listen_string'])
 
   if event['message'].key? 'reply_to_message'
     reply_to_message_id = event['message']['reply_to_message']['message_id']
-    reply_to_message_text = event['message']['reply_to_message']['text']
+    reply_to_message_text = event['message']['reply_to_message']['text'] || event['message']['reply_to_message']['caption']
 
     {
       chat_id: $chat_id,
@@ -65,9 +65,11 @@ def handle_group_chat_message(event)
       reply_to_message_id: reply_to_message_id,
     }
   else
+    message_to_translate = $user_message_text.sub($config['listen_string'], '').strip
+
     {
       chat_id: $chat_id,
-      message_to_send: 'You must reply to a message with "/t" in order for me to translate it.',
+      message_to_translate: message_to_translate,
       reply_to_message_id: $user_message_id,
     }
   end
