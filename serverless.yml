@@ -13,8 +13,8 @@ provider:
         functionName: TelegramWebhookAuthorizer
         identitySource:
           - $request.header.x-telegram-bot-api-secret-token
-        payloadVersion: "1.0"
-        enableSimpleResponses: false
+        payloadVersion: "2.0"
+        enableSimpleResponses: true
   logs:
     httpApi:
       format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength", "authorizerError": "$context.authorizer.error" }'
