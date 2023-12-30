@@ -21,19 +21,24 @@ provider:
 
 
 package:
- patterns:
-   - "!node_modules/**"
-   - "!*.template"
-   - "!package-lock.json"
-   - "!package.json"
-   - "*.rb"
-   - config.yml
+  individually: true
+  patterns:
+    - "!node_modules/**"
+    - "!*"
+    - errors.rb
+    - config.yml
 
 functions:
   TelegramWebhookAuthorizer:
     handler: telegram_webhook_authorizer.authorize
+    package:
+      patterns:
+        - telegram_webhook_authorizer.rb
   HandleTelegramMessage:
     handler: handle_telegram_message.handle
+    package:
+      patterns:
+        - handle_telegram_message.rb
     events:
       - httpApi:
           path: /handle-message
@@ -42,8 +47,14 @@ functions:
             name: telegramWebhookAuthorizer
   TranslateMessage:
     handler: translate_message.chatgpt_translate
+    package:
+      patterns:
+        - translate_message.rb
   RespondToTelegram:
     handler: respond_to_telegram.send_message
+    package:
+      patterns:
+        - respond_to_telegram.rb
 stepFunctions:
   stateMachines:
     TranslationBot:
