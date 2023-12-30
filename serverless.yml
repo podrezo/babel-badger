@@ -18,7 +18,19 @@ provider:
   logs:
     httpApi:
       format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength", "authorizerError": "$context.authorizer.error" }'
-
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: 'states:StartExecution'
+          Resource:
+            Fn::Join:
+              - ''
+              - - 'arn:aws:states:'
+                - Ref: AWS::Region
+                - ':'
+                - Ref: AWS::AccountId
+                - ':stateMachine:TranslationBot'
 
 package:
   individually: true
@@ -39,6 +51,9 @@ functions:
     package:
       patterns:
         - handle_telegram_message.rb
+    environment:
+      TRANSLATION_BOT_STATE_MACHINE_ARN:
+        Fn::GetAtt: [TranslationBot, Arn]
     events:
       - httpApi:
           path: /handle-message
