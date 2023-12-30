@@ -10,18 +10,26 @@ $config = YAML.load_file('./config.yml').freeze
 def handle(event:, context:)
   puts "Received event:"
   p event
+  puts "Context:"
+  p context
 
-  $chat_id = event['message']['chat']['id']
-  $chat_type = event['message']['chat']['type']
-  $user_message_id = event['message']['message_id']
-  $user_message_text = event['message']['text']
+  body = JSON.parse(event['body'])
+
+  $chat_id = body['message']['chat']['id']
+  $chat_type = body['message']['chat']['type']
+  $user_message_id = body['message']['message_id']
+  $user_message_text = body['message']['text']
 
   case $chat_type
   when 'private'
-    handle_private_message(event)
+    handle_private_message(body)
   when 'group'
-    handle_group_chat_message(event)
+    handle_group_chat_message(body)
   end
+
+  {
+    statusCode: 204
+  }
 end
 
 

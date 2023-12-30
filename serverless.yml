@@ -5,10 +5,20 @@ provider:
   name: aws
   runtime: ruby2.7
   memorySize: 256
+  httpApi:
+    cors: false
+    authorizers:
+      telegramWebhookAuthorizer:
+        type: request
+        functionName: TelegramWebhookAuthorizer
+        identitySource:
+          - $request.header.x-telegram-bot-api-secret-token
+        payloadVersion: "1.0"
+        enableSimpleResponses: false
+  logs:
+    httpApi:
+      format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength", "authorizerError": "$context.authorizer.error" }'
 
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
 
 package:
  patterns:
@@ -20,8 +30,16 @@ package:
    - config.yml
 
 functions:
+  TelegramWebhookAuthorizer:
+    handler: telegram_webhook_authorizer.authorize
   HandleTelegramMessage:
     handler: handle_telegram_message.handle
+    events:
+      - httpApi:
+          path: /handle-message
+          method: POST
+          authorizer:
+            name: telegramWebhookAuthorizer
   TranslateMessage:
     handler: translate_message.chatgpt_translate
   RespondToTelegram:
@@ -29,26 +47,10 @@ functions:
 stepFunctions:
   stateMachines:
     TranslationBot:
-      events:
-        - http:
-            path: /handle-message
-            method: POST
       name: TranslationBot
       definition:
-        StartAt: HandleTelegramMessageState
+        StartAt: TranslateMessageState
         States:
-          HandleTelegramMessageState:
-            Type: Task
-            Resource:
-              Fn::GetAtt: [HandleTelegramMessage, Arn]
-            Next: CheckIfTranslateNeeded
-          CheckIfTranslateNeeded:
-            Type: Choice
-            Choices:
-              - Variable: "$.message_to_translate"
-                IsNull: false
-                Next: TranslateMessageState
-            Default: RespondToTelegramState
           TranslateMessageState:
             Type: Task
             Resource:
