@@ -3,7 +3,6 @@ require 'yaml'
 require 'uri'
 require 'net/http'
 require 'openssl'
-require_relative './errors'
 
 $config = YAML.load_file('./config.yml').freeze
 

@@ -1,6 +1,5 @@
 require 'json'
 require 'yaml'
-require_relative './errors'
 
 $config = YAML.load_file('./config.yml').freeze
 

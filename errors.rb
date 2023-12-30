@@ -1,2 +1,0 @@
-class InvalidTokenError < StandardError
-end

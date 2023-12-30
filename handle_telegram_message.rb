@@ -4,7 +4,6 @@ require 'uri'
 require 'net/http'
 require 'openssl'
 require 'aws-sdk-states'
-require_relative './errors'
 
 $config = YAML.load_file('./config.yml').freeze
 

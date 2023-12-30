@@ -37,7 +37,6 @@ package:
   patterns:
     - "!node_modules/**"
     - "!*"
-    - errors.rb
     - config.yml
 
 functions:
