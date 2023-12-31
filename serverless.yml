@@ -45,11 +45,11 @@ functions:
     package:
       patterns:
         - telegram_webhook_authorizer.rb
-  HandleTelegramMessage:
-    handler: handle_telegram_message.handle
+  IngestTelegramWebhook:
+    handler: ingest_telegram_webhook.handle
     package:
       patterns:
-        - handle_telegram_message.rb
+        - ingest_telegram_webhook.rb
     environment:
       TRANSLATION_BOT_STATE_MACHINE_ARN:
         Fn::GetAtt: [TranslationBot, Arn]
@@ -59,6 +59,11 @@ functions:
           method: POST
           authorizer:
             name: telegramWebhookAuthorizer
+  ProcessIncomingMessage:
+    handler: process_incoming_message.handle
+    package:
+      patterns:
+        - process_incoming_message.rb
   TranslateMessage:
     handler: translate_message.chatgpt_translate
     package:
@@ -74,18 +79,39 @@ stepFunctions:
     TranslationBot:
       name: TranslationBot
       definition:
-        StartAt: TranslateMessageState
+        StartAt: ProcessIncomingMessageState
         States:
+          ProcessIncomingMessageState:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [ProcessIncomingMessage, Arn]
+            Next: CheckIfTranslateRequiredState
+          CheckIfTranslateRequiredState:
+            Type: Choice
+            Choices:
+              - Variable: "$.message_to_translate"
+                IsNull: false
+                Next: TranslateMessageState
+            Default: RespondToTelegramState
           TranslateMessageState:
             Type: Task
             Resource:
               Fn::GetAtt: [TranslateMessage, Arn]
-            Next: RespondToTelegramState
+            Next: CheckIfReplyRequiredState
+          CheckIfReplyRequiredState:
+            Type: Choice
+            Choices:
+              - Variable: "$.message_to_send"
+                IsNull: false
+                Next: RespondToTelegramState
+            Default: EndExecution
           RespondToTelegramState:
             Type: Task
             Resource:
               Fn::GetAtt: [RespondToTelegram, Arn]
             End: true
+          EndExecution:
+            Type: Succeed
   validate: true
 
 plugins:

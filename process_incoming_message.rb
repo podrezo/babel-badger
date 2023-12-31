@@ -1,37 +1,25 @@
-require 'json'
-require 'yaml'
-require 'uri'
-require 'net/http'
-require 'openssl'
-require 'aws-sdk-states'
+# require 'yaml'
 
-$config = YAML.load_file('./config.yml').freeze
+# $config = YAML.load_file('./config.yml').freeze
 
 def handle(event:, context:)
-  puts "Received event:"
+  puts "Event:"
   p event
-  puts "Context:"
-  p context
-  puts "ENV:"
-  p ENV
 
-  body = JSON.parse(event['body'])
+  raise StandardError.new('Missing "message" key in event payload') unless event.key?('message')
+  raise StandardError.new('Missing "message.chat" key in event payload') unless event['message'].key?('chat')
 
-  $chat_id = body['message']['chat']['id']
-  $chat_type = body['message']['chat']['type']
-  $user_message_id = body['message']['message_id']
-  $user_message_text = body['message']['text'] || body['message']['caption']
+  $chat_id = event.dig('message', 'chat', 'id')
+  $chat_type = event.dig('message', 'chat', 'type')
+  $user_message_id = event.dig('message', 'message_id')
+  $user_message_text = event.dig('message', 'text') || event.dig('message', 'caption')
 
   case $chat_type
   when 'private'
-    invoke_state_machine handle_private_message(body)
+    handle_private_message(event)
   when 'group'
-    invoke_state_machine handle_group_chat_message(body)
+    handle_group_chat_message(event)
   end
-
-  {
-    statusCode: 204
-  }
 end
 
 
@@ -56,8 +44,8 @@ def handle_group_chat_message(event)
   return unless $user_message_text&.include?($config['listen_string'])
 
   if event['message'].key? 'reply_to_message'
-    reply_to_message_id = event['message']['reply_to_message']['message_id']
-    reply_to_message_text = event['message']['reply_to_message']['text'] || event['message']['reply_to_message']['caption']
+    reply_to_message_id = event.dig('message', 'reply_to_message', 'message_id')
+    reply_to_message_text = event.dig('message', 'reply_to_message', 'text') || event.dig('message', 'reply_to_message', 'caption')
 
     {
       chat_id: $chat_id,
@@ -73,13 +61,4 @@ def handle_group_chat_message(event)
       reply_to_message_id: $user_message_id,
     }
   end
-end
-
-def invoke_state_machine(event)
-  states_client = Aws::States::Client.new(region: ENV['AWS_REGION'])
-
-  response = states_client.start_execution({
-    state_machine_arn: ENV['TRANSLATION_BOT_STATE_MACHINE_ARN'],
-    input: event.to_json
-  })
 end
