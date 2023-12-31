@@ -1,8 +1,5 @@
 require 'json'
 require 'yaml'
-require 'uri'
-require 'net/http'
-require 'openssl'
 require 'aws-sdk-states'
 
 $config = YAML.load_file('./config.yml').freeze

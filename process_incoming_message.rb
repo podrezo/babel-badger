@@ -1,6 +1,6 @@
-# require 'yaml'
+require 'yaml'
 
-# $config = YAML.load_file('./config.yml').freeze
+$config = YAML.load_file('./config.yml').freeze
 
 def handle(event:, context:)
   puts "Event:"
