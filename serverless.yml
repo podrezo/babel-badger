@@ -90,9 +90,9 @@ stepFunctions:
             Type: Choice
             Choices:
               - Variable: "$.message_to_translate"
-                IsNull: false
+                IsPresent: true
                 Next: TranslateMessageState
-            Default: RespondToTelegramState
+            Default: CheckIfReplyRequiredState
           TranslateMessageState:
             Type: Task
             Resource:
@@ -102,7 +102,7 @@ stepFunctions:
             Type: Choice
             Choices:
               - Variable: "$.message_to_send"
-                IsNull: false
+                IsPresent: true
                 Next: RespondToTelegramState
             Default: EndExecution
           RespondToTelegramState:
