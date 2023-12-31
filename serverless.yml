@@ -69,6 +69,11 @@ functions:
     package:
       patterns:
         - translate_message.rb
+  TranslationErrorHandler:
+    handler: translate_message.handle_translation_failure
+    package:
+      patterns:
+        - translate_message.rb
   RespondToTelegram:
     handler: respond_to_telegram.send_message
     package:
@@ -95,8 +100,24 @@ stepFunctions:
             Default: CheckIfReplyRequiredState
           TranslateMessageState:
             Type: Task
+            Retry:
+              - ErrorEquals:
+                  - States.ALL
+                IntervalSeconds: 10
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals:
+                  - States.ALL
+                Next: TranslationErrorHandlerState
+                ResultPath: "$.error"
             Resource:
               Fn::GetAtt: [TranslateMessage, Arn]
+            Next: CheckIfReplyRequiredState
+          TranslationErrorHandlerState:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [TranslationErrorHandler, Arn]
             Next: CheckIfReplyRequiredState
           CheckIfReplyRequiredState:
             Type: Choice

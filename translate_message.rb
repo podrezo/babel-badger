@@ -50,3 +50,19 @@ def chatgpt_translate(event:, context:)
 
   event.merge(message_to_send: chatgpt_response)
 end
+
+def handle_translation_failure(event:, context:)
+  puts 'Received event:'
+  p event
+
+  error_object = event.dig('error', 'Cause')
+
+  error_message = if error_object && (error_hash = JSON.parse(error_object))
+                    error_hash['errorMessage']
+                  else
+                    event.dig('error', 'Error')
+                  end
+
+  event.delete 'message_to_translate'
+  event.merge(message_to_send: "Sorry! There was a problem translating your message.\n\nError:\n#{error_message}")
+end
