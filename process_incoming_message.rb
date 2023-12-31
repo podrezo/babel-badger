@@ -41,7 +41,7 @@ end
 
 def handle_group_chat_message(event)
   # The "message" may just be that a user joined the chat, so ignore those
-  return unless $user_message_text&.include?($config['listen_string'])
+  return {} unless $user_message_text&.include?($config['listen_string'])
 
   if event['message'].key? 'reply_to_message'
     reply_to_message_id = event.dig('message', 'reply_to_message', 'message_id')
