@@ -3,7 +3,7 @@ frameworkVersion: '3'
 
 provider:
   name: aws
-  runtime: ruby2.7
+  runtime: ruby3.2
   memorySize: 256
   httpApi:
     cors: false
