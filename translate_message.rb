@@ -68,20 +68,20 @@ end
 
 def chatgpt(system_prompt, user_input)
   payload = {
-    "model": "gpt-3.5-turbo",
-    "messages": [
+    'model': 'gpt-3.5-turbo',
+    'messages': [
       {
-        "role": "system",
-        "content": system_prompt
+        'role': 'system',
+        'content': system_prompt
       },
       {
-        "role": "user",
-        "content": user_input
+        'role': 'user',
+        'content': user_input
       }
     ]
   }.to_json
 
-  url = URI("https://api.openai.com/v1/chat/completions")
+  url = URI('https://api.openai.com/v1/chat/completions')
 
   http = Net::HTTP.new(url.host, url.port)
   http.use_ssl = true

@@ -33,6 +33,6 @@ def send_message(event:, context:)
 
   response = http.request(request)
 
-  puts "Response from telegram API to sendMessage:"
+  puts 'Response from telegram API to sendMessage:'
   puts response.read_body
 end
