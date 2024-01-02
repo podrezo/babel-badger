@@ -1,6 +1,6 @@
 # BabelBadger: Telegram Translation Bot
 
-![](babel-badger.png)
+![](screenshot.png)
 
 ## Description
 This repository contains the source code for a translation bot on telegram called `@BabelBadgerBot`. The bot is designed to translate text into English using ChatGPT.
