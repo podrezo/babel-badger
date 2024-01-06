@@ -67,6 +67,7 @@ functions:
         - process_incoming_message.rb
   TranslateMessage:
     handler: translate_message.chatgpt_translate
+    timeout: 15 # Translations can take a while
     package:
       patterns:
         - translate_message.rb
