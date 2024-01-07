@@ -56,14 +56,19 @@ def handle_translation_failure(event:, context:)
 
   error_object = event.dig('error', 'Cause')
 
-  error_message = if error_object && (error_hash = JSON.parse(error_object))
-                    error_hash['errorMessage']
-                  else
-                    event.dig('error', 'Error')
-                  end
+  error_details = error_message(event.fetch('error', {}))
 
   event.delete 'message_to_translate'
-  event.merge(message_to_send: "Sorry! There was a problem translating your message.\n\nError:\n#{error_message}")
+  event.merge(message_to_send: "Sorry! There was a problem translating your message.\n\nError:\n#{error_details}")
+end
+
+def error_message(error_hash)
+  fallback_error_message = error_hash.fetch('Error', 'Unknown Error')
+
+  internal_error_hash = JSON.parse(error_object.fetch('Cause', ''))
+  internal_error_hash.fetch('errorMessage', fallback_error_message)
+rescue JSON::ParserError
+  fallback_error_message
 end
 
 def chatgpt(system_prompt, user_input)
