@@ -10,247 +10,68 @@ class OpenAI
   end
 
   def translate(message_to_translate)
-    detect_languages_prompt = <<~PROMPT
-    You must detect languages in the user's input.
-    You can only respond with ISO 639-1 language codes, separated by commas, for each language detected in the user's input.
-    Any languages that do not have a corresponding ISO 639-1 code must be ignored.
-    Anything that is unintelligible as a natural language is to be ignored.
-    If the entire message is unintelligible then respond with an empty string.
-    PROMPT
-
-    language_codes = invoke_completions_api(detect_languages_prompt, message_to_translate).downcase.strip
-
-    raise TranslationException.new('I do not understand this language, sorry.') if language_codes == ''
-    raise TranslationException.new('This message is already entirely in English, sorry. Try a message that contains another language.') if language_codes.strip == 'en'
-
-
-    language_list = language_codes.split(',')
-                                  .map(&:strip)
-                                  .map { |code| LANGUAGE_CODE_TO_LANGUAGE_NAME[code] }
-                                  .join(', ')
-
     translation_prompt = <<~PROMPT
-    You are a translator and you can only respond with translations of the user's input.
-    You will translate into English but you can only translate the following languages: #{language_list}.
-    Anything that is not in one of those languages should just be repeated back as-is.
+    You are a translator that translates to English from any real, human-spoken language that is intelligible to you.
+
+    You will only translate input that is delimited by triple backticks.
+
+    Your output will always be in JSON format with the keys 'translation' and 'languages' where 'translation' is the translated text, in English and 'languages' is an array of the detected languages in the input. Here is an example:
+
+    Input: "Guten tag"
+    Output:
+    {
+      "translation": "Good day",
+      "languages": ["German"]
+    }
+
+    ```#{message_to_translate}```
     PROMPT
 
-    translated_message = invoke_completions_api(translation_prompt, message_to_translate)
+    response = invoke_completions_api(translation_prompt)
+
+    response_to_user_message(response)
+  end
+
+  private
+
+  def response_to_user_message(translation_json_string)
+    translation_data = JSON.parse(translation_json_string)
+
+    raise TranslationException.new('The translation service did not provide the output in the correct format.') unless valid_translation_response?(translation_data)
+
+    translated_message = translation_data['translation']
+    languages = translation_data['languages'].map(&:strip)
+
+    raise TranslationException.new('I do not understand this language, sorry.') if languages.empty?
+    raise TranslationException.new('This message is already entirely in English, sorry. Try a message that contains another language.') if only_english?(languages)
 
     response_to_user = <<~RESPONSE
-    I have translated your message into English from the following detected languages: #{language_list}.
+    I have translated your message into English from the following detected languages: #{languages.join(', ')}.
 
     #{translated_message}
     RESPONSE
 
     response_to_user
+  rescue JSON::ParserError
+    raise TranslationException.new('The translation service failed to provide a translation. Trying again may help.')
   end
 
-  private
+  def only_english?(languages)
+    languages.map(&:downcase).include?('english') && languages.length == 1
+  end
 
-  # ISO-639-1 language codes
-  LANGUAGE_CODE_TO_LANGUAGE_NAME = {
-    'aa' => 'Afar',
-    'ab' => 'Abkhazian',
-    'ae' => 'Avestan',
-    'af' => 'Afrikaans',
-    'ak' => 'Akan',
-    'am' => 'Amharic',
-    'an' => 'Aragonese',
-    'ar' => 'Arabic',
-    'as' => 'Assamese',
-    'av' => 'Avaric',
-    'ay' => 'Aymara',
-    'az' => 'Azerbaijani',
-    'ba' => 'Bashkir',
-    'be' => 'Belarusian',
-    'bg' => 'Bulgarian',
-    'bh' => 'Bihari languages',
-    'bi' => 'Bislama',
-    'bm' => 'Bambara',
-    'bn' => 'Bengali',
-    'bo' => 'Tibetan',
-    'br' => 'Breton',
-    'bs' => 'Bosnian',
-    'ca' => 'Catalan; Valencian',
-    'ce' => 'Chechen',
-    'ch' => 'Chamorro',
-    'co' => 'Corsican',
-    'cr' => 'Cree',
-    'cs' => 'Czech',
-    'cu' => 'Church Slavic; Old Slavonic; Church Slavonic; Old Bulgarian; Old Church Slavonic',
-    'cv' => 'Chuvash',
-    'cy' => 'Welsh',
-    'da' => 'Danish',
-    'de' => 'German',
-    'dv' => 'Divehi; Dhivehi; Maldivian',
-    'dz' => 'Dzongkha',
-    'ee' => 'Ewe',
-    'el' => 'Greek',
-    'en' => 'English',
-    'eo' => 'Esperanto',
-    'es' => 'Spanish; Castilian',
-    'et' => 'Estonian',
-    'eu' => 'Basque',
-    'fa' => 'Persian',
-    'ff' => 'Fulah',
-    'fi' => 'Finnish',
-    'fj' => 'Fijian',
-    'fo' => 'Faroese',
-    'fr' => 'French',
-    'fy' => 'Western Frisian',
-    'ga' => 'Irish',
-    'gd' => 'Gaelic; Scottish Gaelic',
-    'gl' => 'Galician',
-    'gn' => 'Guarani',
-    'gu' => 'Gujarati',
-    'gv' => 'Manx',
-    'ha' => 'Hausa',
-    'he' => 'Hebrew',
-    'hi' => 'Hindi',
-    'ho' => 'Hiri Motu',
-    'hr' => 'Croatian',
-    'ht' => 'Haitian; Haitian Creole',
-    'hu' => 'Hungarian',
-    'hy' => 'Armenian',
-    'hz' => 'Herero',
-    'ia' => 'Interlingua (International Auxiliary Language Association)',
-    'id' => 'Indonesian',
-    'ie' => 'Interlingue; Occidental',
-    'ig' => 'Igbo',
-    'ii' => 'Sichuan Yi; Nuosu',
-    'ik' => 'Inupiaq',
-    'io' => 'Ido',
-    'is' => 'Icelandic',
-    'it' => 'Italian',
-    'iu' => 'Inuktitut',
-    'ja' => 'Japanese',
-    'jv' => 'Javanese',
-    'ka' => 'Georgian',
-    'kg' => 'Kongo',
-    'ki' => 'Kikuyu; Gikuyu',
-    'kj' => 'Kuanyama; Kwanyama',
-    'kk' => 'Kazakh',
-    'kl' => 'Kalaallisut; Greenlandic',
-    'km' => 'Central Khmer',
-    'kn' => 'Kannada',
-    'ko' => 'Korean',
-    'kr' => 'Kanuri',
-    'ks' => 'Kashmiri',
-    'ku' => 'Kurdish',
-    'kv' => 'Komi',
-    'kw' => 'Cornish',
-    'ky' => 'Kirghiz; Kyrgyz',
-    'la' => 'Latin',
-    'lb' => 'Luxembourgish; Letzeburgesch',
-    'lg' => 'Ganda',
-    'li' => 'Limburgan; Limburger; Limburgish',
-    'ln' => 'Lingala',
-    'lo' => 'Lao',
-    'lt' => 'Lithuanian',
-    'lu' => 'Luba-Katanga',
-    'lv' => 'Latvian',
-    'mg' => 'Malagasy',
-    'mh' => 'Marshallese',
-    'mi' => 'Maori',
-    'mk' => 'Macedonian',
-    'ml' => 'Malayalam',
-    'mn' => 'Mongolian',
-    'mr' => 'Marathi',
-    'ms' => 'Malay',
-    'mt' => 'Maltese',
-    'my' => 'Burmese',
-    'na' => 'Nauru',
-    'nb' => 'Bokmål, Norwegian; Norwegian Bokmål',
-    'nd' => 'Ndebele, North; North Ndebele',
-    'ne' => 'Nepali',
-    'ng' => 'Ndonga',
-    'nl' => 'Dutch; Flemish',
-    'nn' => 'Norwegian Nynorsk; Nynorsk, Norwegian',
-    'no' => 'Norwegian',
-    'nr' => 'Ndebele, South; South Ndebele',
-    'nv' => 'Navajo; Navaho',
-    'ny' => 'Chichewa; Chewa; Nyanja',
-    'oc' => 'Occitan (post 1500)',
-    'oj' => 'Ojibwa',
-    'om' => 'Oromo',
-    'or' => 'Oriya',
-    'os' => 'Ossetian; Ossetic',
-    'pa' => 'Panjabi; Punjabi',
-    'pi' => 'Pali',
-    'pl' => 'Polish',
-    'ps' => 'Pushto; Pashto',
-    'pt' => 'Portuguese',
-    'qu' => 'Quechua',
-    'rm' => 'Romansh',
-    'rn' => 'Rundi',
-    'ro' => 'Romanian; Moldavian; Moldovan',
-    'ru' => 'Russian',
-    'rw' => 'Kinyarwanda',
-    'sa' => 'Sanskrit',
-    'sc' => 'Sardinian',
-    'sd' => 'Sindhi',
-    'se' => 'Northern Sami',
-    'sg' => 'Sango',
-    'si' => 'Sinhala; Sinhalese',
-    'sk' => 'Slovak',
-    'sl' => 'Slovenian',
-    'sm' => 'Samoan',
-    'sn' => 'Shona',
-    'so' => 'Somali',
-    'sq' => 'Albanian',
-    'sr' => 'Serbian',
-    'ss' => 'Swati',
-    'st' => 'Sotho, Southern',
-    'su' => 'Sundanese',
-    'sv' => 'Swedish',
-    'sw' => 'Swahili',
-    'ta' => 'Tamil',
-    'te' => 'Telugu',
-    'tg' => 'Tajik',
-    'th' => 'Thai',
-    'ti' => 'Tigrinya',
-    'tk' => 'Turkmen',
-    'tl' => 'Tagalog',
-    'tn' => 'Tswana',
-    'to' => 'Tonga (Tonga Islands)',
-    'tr' => 'Turkish',
-    'ts' => 'Tsonga',
-    'tt' => 'Tatar',
-    'tw' => 'Twi',
-    'ty' => 'Tahitian',
-    'ug' => 'Uighur; Uyghur',
-    'uk' => 'Ukrainian',
-    'ur' => 'Urdu',
-    'uz' => 'Uzbek',
-    've' => 'Venda',
-    'vi' => 'Vietnamese',
-    'vo' => 'Volapük',
-    'wa' => 'Walloon',
-    'wo' => 'Wolof',
-    'xh' => 'Xhosa',
-    'yi' => 'Yiddish',
-    'yo' => 'Yoruba',
-    'za' => 'Zhuang; Chuang',
-    'zh' => 'Chinese',
-    'zu' => 'Zulu',
-  }.freeze
+  def valid_translation_response?(translation_hash)
+    (translation_hash.keys - ['translation', 'languages']).empty?
+  end
 
-
-  def invoke_completions_api(system_prompt, user_input)
+  def invoke_completions_api(user_prompt, system_prompt = nil)
     payload = {
-      'model': 'gpt-3.5-turbo',
-      'messages': [
-        {
-          'role': 'system',
-          'content': system_prompt
-        },
-        {
-          'role': 'user',
-          'content': user_input
-        }
-      ]
-    }.to_json
+      model: 'gpt-3.5-turbo',
+      messages: []
+    }
+
+    payload[:messages].push(role: 'system', content: system_prompt) if system_prompt
+    payload[:messages].push(role: 'user', content: user_prompt)
 
     url = URI('https://api.openai.com/v1/chat/completions')
 
@@ -261,7 +82,7 @@ class OpenAI
     request = Net::HTTP::Post.new(url)
     request['Content-Type'] = 'application/json'
     request['Authorization'] = "Bearer #{@api_key}"
-    request.body = payload
+    request.body = payload.to_json
 
     response = http.request(request)
 

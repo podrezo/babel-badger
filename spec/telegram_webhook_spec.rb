@@ -1,3 +1,4 @@
+require_relative '../lib/errors'
 require_relative '../lib/openai'
 require_relative '../lib/telegram'
 require_relative '../lib/telegram_webhook'
@@ -217,6 +218,42 @@ describe TelegramWebhook do
       expect {
         TelegramWebhook.new(event, listen_string, telegram_service, openai_service).process
       }.to raise_error(StandardError, /^Invalid webhook body/)
+    end
+
+    it 'should respond to the user with an error message if translation fails' do
+      event = {
+        'update_id' => 332517285,
+        'message' => {
+          'message_id' => 82,
+          'from' => {
+            'id' => 123,
+            'is_bot' => false,
+            'first_name' => 'CoolGuy',
+            'username' => 'cool_guy_88',
+            'language_code' => 'en'
+          },
+          'chat' => {
+            'id' => -585720080,
+            'title' => 'Cool Boys Club',
+            'type' => 'group',
+            'all_members_are_administrators' => true
+          },
+          'date' => 1704161289,
+          'text' => 'I love these new shoes @BabelBadgerBot',
+          'entities' => [
+            {
+              'offset' => 0,
+              'length' => 15,
+              'type' => 'mention'
+            }
+          ]
+        }
+      }
+
+      expect(openai_service).to receive(:translate).with('I love these new shoes').and_raise(TranslationException.new('I do not understand this language, sorry.'))
+      expect(telegram_service).to receive(:send_message).with(-585720080, "I encountered a problem while trying to translate your text.\n\nERROR: I do not understand this language, sorry.", 82)
+
+      TelegramWebhook.new(event, listen_string, telegram_service, openai_service).process
     end
   end
 end

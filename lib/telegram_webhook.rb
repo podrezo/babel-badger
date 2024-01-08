@@ -1,3 +1,5 @@
+require_relative './errors'
+
 class TelegramWebhook
   attr_reader :chat_id, :user_message_id, :user_message_text, :reply_to_message_id, :reply_to_message_text
   def initialize(event, listen_string, telegram_service, openai_service)
@@ -18,6 +20,8 @@ class TelegramWebhook
 
     handle_private_message if private_chat?
     handle_group_chat_message if group_chat?
+  rescue TranslationException => error
+    @telegram_service.send_message(@chat_id, "I encountered a problem while trying to translate your text.\n\nERROR: #{error.message}", @user_message_id)
   end
 
   def valid?
