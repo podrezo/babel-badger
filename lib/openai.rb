@@ -10,6 +10,8 @@ class OpenAI
   end
 
   def translate(message_to_translate)
+    raise TranslationException.new('The input message is too long; try breaking it up into smaller chunks.') if message_to_translate.length > 1000
+
     translation_prompt = <<~PROMPT
     You are a translator that translates to English from any real, human-spoken language that is intelligible to you.
 
