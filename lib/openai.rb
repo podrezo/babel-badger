@@ -67,6 +67,7 @@ class OpenAI
   def invoke_completions_api(user_prompt, system_prompt = nil)
     payload = {
       model: 'gpt-3.5-turbo',
+      max_tokens: 1000,
       messages: []
     }
 
