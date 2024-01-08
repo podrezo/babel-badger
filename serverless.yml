@@ -30,7 +30,7 @@ provider:
                 - Ref: AWS::Region
                 - ':'
                 - Ref: AWS::AccountId
-                - ':stateMachine:TranslationBot'
+                - ':lambda:Translate'
 
 package:
   individually: true
@@ -39,6 +39,7 @@ package:
     - "!spec/**"
     - "!*"
     - config.yml
+    - lib/*.rb
 
 functions:
   TelegramWebhookAuthorizer:
@@ -52,96 +53,16 @@ functions:
       patterns:
         - ingest_telegram_webhook.rb
     environment:
-      TRANSLATION_BOT_STATE_MACHINE_ARN:
-        Fn::GetAtt: [TranslationBot, Arn]
+      STAGE: ${sls:stage}
     events:
       - httpApi:
           path: /handle-message
           method: POST
           authorizer:
             name: telegramWebhookAuthorizer
-  ProcessIncomingMessage:
-    handler: process_incoming_message.handle
+  Translate:
+    handler: translate.handle
+    timeout: 15
     package:
       patterns:
-        - process_incoming_message.rb
-  TranslateMessage:
-    handler: translate_message.chatgpt_translate
-    timeout: 15 # Translations can take a while
-    package:
-      patterns:
-        - translate_message.rb
-  TranslationErrorHandler:
-    handler: translate_message.handle_translation_failure
-    package:
-      patterns:
-        - translate_message.rb
-  RespondToTelegram:
-    handler: respond_to_telegram.send_message
-    package:
-      patterns:
-        - respond_to_telegram.rb
-stepFunctions:
-  stateMachines:
-    TranslationBot:
-      name: TranslationBot
-      definition:
-        StartAt: ProcessIncomingMessageState
-        States:
-          ProcessIncomingMessageState:
-            Type: Task
-            Resource:
-              Fn::GetAtt: [ProcessIncomingMessage, Arn]
-            Next: CheckIfTranslateRequiredState
-          CheckIfTranslateRequiredState:
-            Type: Choice
-            Choices:
-              - Variable: "$.message_to_translate"
-                IsPresent: true
-                Next: TranslateMessageState
-            Default: CheckIfReplyRequiredState
-          TranslateMessageState:
-            Type: Task
-            Retry:
-              - ErrorEquals:
-                  - States.ALL
-                IntervalSeconds: 10
-                MaxAttempts: 2
-                BackoffRate: 2.0
-            Catch:
-              - ErrorEquals:
-                  - States.ALL
-                Next: TranslationErrorHandlerState
-                ResultPath: "$.error"
-            Resource:
-              Fn::GetAtt: [TranslateMessage, Arn]
-            Next: CheckIfReplyRequiredState
-          TranslationErrorHandlerState:
-            Type: Task
-            Resource:
-              Fn::GetAtt: [TranslationErrorHandler, Arn]
-            Next: CheckIfReplyRequiredState
-          CheckIfReplyRequiredState:
-            Type: Choice
-            Choices:
-              - Variable: "$.message_to_send"
-                IsPresent: true
-                Next: RespondToTelegramState
-            Default: EndExecution
-          RespondToTelegramState:
-            Type: Task
-            Retry:
-              - ErrorEquals:
-                  - States.ALL
-                IntervalSeconds: 10
-                MaxAttempts: 2
-                BackoffRate: 2.0
-            Resource:
-              Fn::GetAtt: [RespondToTelegram, Arn]
-            End: true
-          EndExecution:
-            Type: Succeed
-  validate: true
-
-plugins:
-  - serverless-step-functions
+        - translate.rb
