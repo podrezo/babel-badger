@@ -1,23 +1,36 @@
 require 'json'
 require 'yaml'
 require 'aws-sdk-lambda'
+require_relative './lib/telegram_webhook'
 
-$config = YAML.load_file('./config.yml').freeze
 
 def handle(event:, context:)
-  puts 'Received event:'
-  p event
+  config = YAML.load_file('./config.yml').freeze
 
-  http_request_json_payload = JSON.parse(event['body'])
+  webhook_payload = JSON.parse(event['body'])
 
-  invoke_state_machine http_request_json_payload
+  unless TelegramWebhook.new(webhook_payload, config['listen_string'], nil, nil).valid?
+    return {
+      statusCode: 400,
+      body: 'Invalid request'
+    }
+  end
+
+  begin_async_translate_job webhook_payload
 
   {
     statusCode: 204
   }
+rescue JSON::ParserError => e
+  puts "Error parsing JSON: #{e.message}"
+
+  {
+    statusCode: 400,
+    body: "Error parsing JSON: #{e.message}"
+  }
 end
 
-def invoke_state_machine(event)
+def begin_async_translate_job(event)
   lambda_client = Aws::Lambda::Client.new(region: ENV['AWS_REGION'])
 
   response = lambda_client.invoke({

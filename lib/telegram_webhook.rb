@@ -14,8 +14,17 @@ class TelegramWebhook
   end
 
   def process
+    raise StandardError.new("Invalid webhook body: #{@event.to_json}") unless valid?
+
     handle_private_message if private_chat?
     handle_group_chat_message if group_chat?
+  end
+
+  def valid?
+    return false unless @event.key?('message')
+    return false unless @event['message'].key?('chat')
+
+    true
   end
 
   private
@@ -32,7 +41,7 @@ class TelegramWebhook
   def handle_group_chat_message
     return unless message_contains_listen_string?
 
-    if webhook.reply?
+    if reply?
       translation = @openai_service.translate(@reply_to_message_text)
       # Reply to the original message instead of the message that tagged the bot
       @telegram_service.send_message(@chat_id, translation, @reply_to_message_id)
@@ -61,7 +70,7 @@ class TelegramWebhook
 
   def message_contains_listen_string?
     # User message text may not be defined. The 'message' may have been that a user joined a group chat
-    @user_message_text&.include?(listen_string)
+    @user_message_text&.include?(@listen_string)
   end
 
   def welcome_message
