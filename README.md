@@ -15,3 +15,7 @@ This project uses the serverless framework. For more information about serverles
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
+
+
+# TODO
+* BUG: If you try to tag the bot for a message before it joined and the history is turned off, you get an erraneous response
