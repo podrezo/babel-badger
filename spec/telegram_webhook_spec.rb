@@ -178,6 +178,49 @@ describe TelegramWebhook do
 
       TelegramWebhook.new(event, listen_string, telegram_service, openai_service).process
     end
+
+    it 'should let you know if there is nothing to translate' do
+      event = {
+        'update_id' => 332517285,
+        'message' => {
+          'message_id' => 82,
+          'from' => {
+            'id' => 123,
+            'is_bot' => false,
+            'first_name' => 'CoolGuy',
+            'username' => 'cool_guy_88',
+            'language_code' => 'en'
+          },
+          'chat' => {
+            'id' => -585720080,
+            'title' => 'Cool Boys Club',
+            'type' => 'group',
+            'all_members_are_administrators' => true
+          },
+          'date' => 1704161289,
+          'text' => '@BabelBadgerBot',
+          'entities' => [
+            {
+              'offset' => 0,
+              'length' => 15,
+              'type' => 'mention'
+            }
+          ]
+        }
+      }
+
+      expect(openai_service).not_to receive(:translate)
+      allow(telegram_service).to receive(:send_message)
+
+
+      TelegramWebhook.new(event, listen_string, telegram_service, openai_service).process
+
+      expect(telegram_service).to have_received(:send_message) do |*args|
+        expect(args[0]).to eq -585720080
+        expect(args[1]).to match(/I did not detect any message to translate/)
+        expect(args[2]).to eq 82
+      end
+    end
   end
 
   context 'error case' do

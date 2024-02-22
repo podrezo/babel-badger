@@ -51,6 +51,17 @@ class TelegramWebhook
       @telegram_service.send_message(@chat_id, translation, @reply_to_message_id)
     else
       message_to_translate = @user_message_text.sub(@listen_string, '').strip
+
+      if message_to_translate.empty?
+        response_message = <<-RESPONSE
+I did not detect any message to translate.
+
+If you were replying to a message that needs translating, check that "conversation history" is enabled for this group.
+        RESPONSE
+        @telegram_service.send_message(@chat_id, response_message, @user_message_id)
+        return
+      end
+
       translation = @openai_service.translate(message_to_translate)
       @telegram_service.send_message(@chat_id, translation, @user_message_id)
     end
