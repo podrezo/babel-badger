@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> I took down the bot because I don't want to maintain it anymore. It was fun while it lasted but you won't find it active on telegram anymore.
+
 # BabelBadger: Telegram Translation Bot
 
 ![](screenshot.png)
